@@ -1,0 +1,23 @@
+{
+  "slug": "Razor",
+  "name": "Razor",
+  "version": "2.0.0",
+  "license": "GPL-3.0-or-later",
+  "brand": "Haer",
+  "author": "Haer",
+  "authorEmail": "",
+  "authorUrl": "",
+  "pluginUrl": "",
+  "manualUrl": "",
+  "sourceUrl": "https://github.com/hardyfinn/razor",
+  "donateUrl": "",
+  "changelogUrl": "",
+  "modules": [
+    {
+      "slug": "Razor",
+      "name": "Razor",
+      "description": "Live reverse-tape splice: the play head runs one bar behind the record head, so the next 1/2, 1, 2 or 4 beats can be cut out, flipped and spliced back in time",
+      "tags": ["Effect", "Delay", "Recording", "Sampler"]
+    }
+  ]
+}
