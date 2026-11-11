@@ -1,5 +1,5 @@
 // Renders a short demo: a synthetic 128 BPM loop through the Razor engine,
-// with a few reverses of each length and one INSERT.
+// with a few reverses of each length.
 //   c++ -std=c++11 -O2 -o test/render_demo test/render_demo.cpp && test/render_demo razor-demo.wav
 #include "../src/RazorEngine.hpp"
 #include <cstdio>
@@ -79,15 +79,15 @@ int main(int argc, char** argv) {
 	e->setSampleRate(SR);
 	e->angle = 2.f / 3.f;  // 45 degree splices
 	// what happens, by bar of the OUTPUT (bars 0-1 are silent: the tape's first bar)
-	struct Cue { double bar; int len; bool insert; bool snap; float cut; };
+	struct Cue { double bar; int len; bool snap; float cut; };
 	std::vector<Cue> cues = {
-		{3.0, 1, false, false, 0.f},      // 1 beat
-		{5.0, 2, false, false, 0.f},      // 2 beats
-		{7.0, 0, false, false, 0.f},      // 1/2 beat ...
-		{7.5, 0, false, false, 0.f},      // ... twice
-		{9.0, 3, false, false, 0.f},      // a whole bar
-		{11.5, 1, false, true, -0.5f},    // 1 beat, SNAP with CUT pulled early
-		{13.0, 1, true, false, 0.f},      // INSERT 1 beat, then catch up
+		{3.0, 1, false, 0.f},      // 1 beat
+		{5.0, 2, false, 0.f},      // 2 beats
+		{7.0, 0, false, 0.f},      // 1/2 beat ...
+		{7.5, 0, false, 0.f},      // ... twice
+		{9.0, 3, false, 0.f},      // a whole bar
+		{11.5, 1, true, -0.5f},    // 1 beat, SNAP with CUT pulled early
+		{13.0, 1, false, 0.f},     // 1 beat again
 	};
 	int64_t total = (int64_t) P * 4 * 20;
 	std::vector<float> lr;
@@ -97,13 +97,11 @@ int main(int argc, char** argv) {
 		// arm a little before the bar: the press waits for the next beat
 		double outBar = (double) n / (4.0 * P);
 		if (next < cues.size() && outBar >= cues[next].bar - 0.2) {
-			e->insert = cues[next].insert;
 			e->snap = cues[next].snap;
 			e->cut = cues[next].cut / 8.f;
 			e->arm(cues[next].len);
 			next++;
 		}
-		if (!e->reversing && e->pendingLen < 0 && next == cues.size() && e->insert) e->catchRate = 0.06f;
 		float l, r;
 		loop(n, l, r);
 		e->process(l, r, n % P == 0, n == 0);

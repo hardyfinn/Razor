@@ -10,7 +10,6 @@
 using namespace rz;
 
 static const int PPQN_CHOICES[4] = {1, 2, 4, 24};
-static const float CATCH_CHOICES[3] = {0.02f, 0.06f, 0.12f};
 static const char* LENGTH_NAMES[NUM_LENGTHS] = {"1/2 beat", "1 beat", "2 beats", "4 beats (a whole bar)"};
 
 struct CutQuantity : ParamQuantity {
@@ -31,7 +30,7 @@ struct AngleQuantity : ParamQuantity {
 struct Razor : Module {
 	enum ParamId {
 		ENUMS(LEN_BUTTON, NUM_LENGTHS),
-		SNAP_PARAM, BAR_PARAM, INSERT_PARAM,
+		SNAP_PARAM, BAR_PARAM,
 		CUT_PARAM, ANGLE_PARAM, PROB_PARAM, BPM_PARAM, DEST_PARAM,
 		PARAMS_LEN
 	};
@@ -43,14 +42,13 @@ struct Razor : Module {
 	enum OutputId { OUT_L_OUTPUT, OUT_R_OUTPUT, REV_OUTPUT, OUTPUTS_LEN };
 	enum LightId {
 		ENUMS(LEN_LIGHT, NUM_LENGTHS),
-		SNAP_LIGHT, BAR_LIGHT, INSERT_LIGHT, REV_LIGHT, CLOCK_LIGHT,
+		SNAP_LIGHT, BAR_LIGHT, REV_LIGHT, CLOCK_LIGHT,
 		LIGHTS_LEN
 	};
 	enum Dest { DEST_CUT, DEST_ANGLE, DEST_PROB };
 
 	RazorEngine tape;
 	int ppqnIndex = 0;
-	int catchIndex = 1;
 
 	dsp::SchmittTrigger clockTrig, resetTrig, gateTrig[NUM_LENGTHS];
 	dsp::BooleanTrigger btnTrig[NUM_LENGTHS];
@@ -73,7 +71,6 @@ struct Razor : Module {
 		}
 		configSwitch(SNAP_PARAM, 0.f, 1.f, 0.f, "SNAP: cut just before the nearest hits", {"Off: cut on the grid", "On: cut just before the hits"});
 		configSwitch(BAR_PARAM, 0.f, 1.f, 0.f, "Start on", {"The next beat", "The next bar"});
-		configSwitch(INSERT_PARAM, 0.f, 1.f, 0.f, "Splice mode", {"REPLACE: the reversed piece takes the forward piece's place", "INSERT: the piece is added in, then the tape catches up"});
 		configParam<CutQuantity>(CUT_PARAM, -1.f, 1.f, 0.f, "CUT: move both razor cuts");
 		configParam<AngleQuantity>(ANGLE_PARAM, 0.f, 1.f, 2.f / 3.f, "Splice angle");
 		configParam(PROB_PARAM, 0.f, 1.f, 1.f, "Probability that a gate reverses", "%", 0.f, 100.f);
@@ -100,7 +97,6 @@ struct Razor : Module {
 	void onReset(const ResetEvent& e) override {
 		Module::onReset(e);
 		ppqnIndex = 0;
-		catchIndex = 1;
 		tape.reset();
 	}
 
@@ -118,8 +114,6 @@ struct Razor : Module {
 		float prob = clamp(params[PROB_PARAM].getValue() + cvFor(DEST_PROB) / 10.f, 0.f, 1.f);
 		tape.snap = params[SNAP_PARAM].getValue() > 0.5f;
 		tape.quantBar = params[BAR_PARAM].getValue() > 0.5f;
-		tape.insert = params[INSERT_PARAM].getValue() > 0.5f;
-		tape.catchRate = CATCH_CHOICES[catchIndex];
 
 		// ---- clock: external pulses, or the BPM knob ----
 		bool beat = false;
@@ -174,7 +168,6 @@ struct Razor : Module {
 			}
 			lights[SNAP_LIGHT].setBrightness(tape.snap ? 1.f : 0.f);
 			lights[BAR_LIGHT].setBrightness(tape.quantBar ? 1.f : 0.f);
-			lights[INSERT_LIGHT].setBrightness(tape.insert ? 1.f : 0.f);
 			lights[REV_LIGHT].setBrightness(tape.reversing ? 1.f : 0.f);
 			lights[CLOCK_LIGHT].setBrightnessSmooth(clockFlash.process(dt) ? 1.f : 0.f, dt);
 		}
@@ -183,15 +176,12 @@ struct Razor : Module {
 	json_t* dataToJson() override {
 		json_t* root = json_object();
 		json_object_set_new(root, "ppqnIndex", json_integer(ppqnIndex));
-		json_object_set_new(root, "catchIndex", json_integer(catchIndex));
 		return root;
 	}
 
 	void dataFromJson(json_t* root) override {
 		json_t* j = json_object_get(root, "ppqnIndex");
 		if (j) ppqnIndex = clamp((int) json_integer_value(j), 0, 3);
-		j = json_object_get(root, "catchIndex");
-		if (j) catchIndex = clamp((int) json_integer_value(j), 0, 2);
 	}
 };
 
@@ -253,7 +243,7 @@ struct TapeDisplay : Widget {
 		std::string left;
 		NVGcolor lc = C_INK;
 		static const char* lens[NUM_LENGTHS] = {"1/2 BEAT", "1 BEAT", "2 BEATS", "4 BEATS"};
-		if (e.reversing) { left = string::f("REVERSING %s%s", lens[std::max(0, e.activeLen)], e.revInsert ? " (insert)" : ""); lc = C_REV; }
+		if (e.reversing) { left = string::f("REVERSING %s", lens[std::max(0, e.activeLen)]); lc = C_REV; }
 		else if (e.pendingLen >= 0) { left = string::f("ARMED %s: next %s", lens[e.pendingLen], e.quantBar ? "bar" : "beat"); lc = C_MARK; }
 		else if (module->skippedTime > 0.f) { left = "gate skipped (PROB)"; lc = C_SOFT; }
 		else left = "FORWARD";
@@ -350,9 +340,8 @@ struct RazorWidget : ModuleWidget {
 			addParam(createLightParamCentered<VCVLightBezel<WhiteLight>>(mm2px(Vec(lenX[i], 61.0)), module, Razor::LEN_BUTTON + i, Razor::LEN_LIGHT + i));
 			addInput(createInputCentered<PJ301MPort>(mm2px(Vec(lenX[i], 73.0)), module, Razor::GATE_INPUT + i));
 		}
-		addParam(createLightParamCentered<VCVLightLatch<MediumSimpleLight<YellowLight>>>(mm2px(Vec(90.0, 61.0)), module, Razor::SNAP_PARAM, Razor::SNAP_LIGHT));
-		addParam(createLightParamCentered<VCVLightLatch<MediumSimpleLight<YellowLight>>>(mm2px(Vec(108.0, 61.0)), module, Razor::BAR_PARAM, Razor::BAR_LIGHT));
-		addParam(createLightParamCentered<VCVLightLatch<MediumSimpleLight<YellowLight>>>(mm2px(Vec(126.0, 61.0)), module, Razor::INSERT_PARAM, Razor::INSERT_LIGHT));
+		addParam(createLightParamCentered<VCVLightLatch<MediumSimpleLight<YellowLight>>>(mm2px(Vec(96.0, 61.0)), module, Razor::SNAP_PARAM, Razor::SNAP_LIGHT));
+		addParam(createLightParamCentered<VCVLightLatch<MediumSimpleLight<YellowLight>>>(mm2px(Vec(121.0, 61.0)), module, Razor::BAR_PARAM, Razor::BAR_LIGHT));
 
 		const float knobY = 97.0;
 		addParam(createParamCentered<RoundLargeBlackKnob>(mm2px(Vec(16.0, knobY)), module, Razor::CUT_PARAM));
@@ -380,8 +369,6 @@ struct RazorWidget : ModuleWidget {
 		menu->addChild(new MenuSeparator);
 		menu->addChild(createIndexPtrSubmenuItem("Clock pulses per beat",
 			{"1 (quarter notes)", "2 (eighth notes)", "4 (sixteenth notes)", "24 (MIDI clock)"}, &m->ppqnIndex));
-		menu->addChild(createIndexPtrSubmenuItem("INSERT catch-up speed",
-			{"Gentle (2% fast, about 1/3 semitone)", "Medium (6% fast, about 1 semitone)", "Fast (12% fast, about 2 semitones)"}, &m->catchIndex));
 		menu->addChild(createMenuItem("Clear the tape", "", [=]() { m->clearRequest = true; }));
 	}
 };

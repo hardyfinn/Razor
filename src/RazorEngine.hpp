@@ -5,13 +5,10 @@
 // head. Everything you hear is the input, one bar late, locked to the clock.
 // The bar of tape between the two heads is recorded but not yet heard, so the
 // engine can cut out the next 1/2, 1, 2 or 4 beats of it, play that piece
-// backwards, and splice it back in place:
-//
-//   REPLACE: the reversed piece takes the place of the forward piece, and the
-//            forward stream comes back exactly where it would have been.
-//   INSERT:  the reversed piece is added in, so the stream falls behind the
-//            grid. The tape then runs slightly fast (varispeed) until the lag
-//            is back to exactly one bar.
+// backwards, and splice it back in place: the reversed piece takes the place
+// of the forward piece, and the forward stream comes back exactly where it
+// would have been. (If the tempo drifts, the tape runs slightly fast or slow,
+// varispeed, until the gap is exactly one bar again.)
 //
 // All positions are in "tape frames": frame n is the n-th sample that was
 // recorded. This file has no VCV Rack code so it can be tested on its own
@@ -27,7 +24,8 @@ namespace rz {
 static const int NUM_LENGTHS = 4;
 static const float LENGTHS[NUM_LENGTHS] = {0.5f, 1.f, 2.f, 4.f};  // in beats
 static const int LAG_BEATS = 4;           // the gap between the heads: one bar
-static const float BUFFER_SECONDS = 24.f; // room for the bar at 40 BPM plus inserts
+static const double CATCH_RATE = 0.06;   // tempo-drift varispeed, as a fraction of normal speed
+static const float BUFFER_SECONDS = 24.f; // room for the bar at 40 BPM, with plenty spare
 static const int PEAK_BLOCK = 128;        // frames per peak block (for the display)
 static const int BEAT_RING = 64;
 static const int ONSET_RING = 512;
@@ -54,10 +52,8 @@ struct RazorEngine {
 	// ---- settings (set these before each process call) ----
 	float cut = 0.f;          // CUT, in beats (-1/8 .. +1/8): moves both razor cuts
 	float angle = 0.667f;     // splice angle knob 0..1 (0.667 = 45 degrees)
-	bool insert = false;      // INSERT mode (else REPLACE)
 	bool quantBar = false;    // start on the next bar (else the next beat)
 	bool snap = false;        // SNAP: place the cuts just before the nearest hits
-	float catchRate = 0.06f;  // varispeed catch-up, as a fraction of normal speed
 	double defaultPeriod = 0; // beat length (frames) to use before any clock
 
 	// ---- outputs ----
@@ -76,7 +72,6 @@ struct RazorEngine {
 	Reader main, ghost;
 	double fadeLen = 0, fadeLeft = 0;
 	double revA = 0, revB = 0;  // the piece being reversed, [revA, revB]
-	bool revInsert = false;
 
 	int pendingLen = -1;      // index into LENGTHS waiting to start, or -1
 	double planA = -1;        // where the pending piece will start (tape frames), -1 if not known yet
@@ -227,7 +222,6 @@ struct RazorEngine {
 		double b = snapEdge(nominal) + cut * period;
 		b = std::min(b, newest());                  // can't read tape that isn't recorded
 		b = std::max(b, a + 0.25 * n * period);
-		revInsert = insert && (lag() + (b - a) < maxLag());
 		startFade();
 		revA = a;
 		revB = b;
@@ -245,7 +239,7 @@ struct RazorEngine {
 		startFade();
 		mode = FORWARD;
 		reversing = false;
-		f = (revInsert ? revA : revB) + overshoot;
+		f = revB + overshoot;
 		main.dir = 1;
 		main.pos = f;
 		activeLen = -1;
@@ -303,7 +297,7 @@ struct RazorEngine {
 			// varispeed: run a little fast (or slow) until the gap is one bar again
 			double want = 1.0;
 			if (std::fabs(err) > 0.5)
-				want = 1.0 + catchRate * std::max(-1.0, std::min(1.0, err / (0.02 * sampleRate)));
+				want = 1.0 + CATCH_RATE * std::max(-1.0, std::min(1.0, err / (0.02 * sampleRate)));
 			speed += (want - speed) * (1.0 / (0.03 * sampleRate));
 			if (std::fabs(err) <= 0.5 && std::fabs(speed - 1.0) < 1e-4) speed = 1.0;
 
@@ -325,9 +319,7 @@ struct RazorEngine {
 				// back-to-back: a reverse armed during this one can start right here
 				if (pendingLen >= 0) {
 					int k = -1;
-					// (after an INSERT the play head is back at the start of the
-					// piece it just reversed, so the next one starts at a later beat)
-					double a = findStart(revInsert ? f + 1.0 : f - 0.5, nullptr, &k);
+					double a = findStart(f - 0.5, nullptr, &k);
 					planA = a;
 					if (a >= 0 && a <= f + 0.5) beginReverse(a, k, std::max(0.0, f - a));
 				}

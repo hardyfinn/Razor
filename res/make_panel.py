@@ -94,9 +94,8 @@ for x, lab in zip(lenX, ["½", "1", "2", "4"]):
 add(f'<line x1="6.5" y1="45.8" x2="72.5" y2="45.8" stroke="{MARK}" stroke-width="0.35"/>')
 
 # ---- mode buttons ----
-for x, lab, hints in [(90.0, "SNAP", ["cut just", "before hits"]),
-                      (108.0, "BAR", ["start on", "next bar"]),
-                      (126.0, "INSERT", ["add, then", "catch up"])]:
+for x, lab, hints in [(96.0, "SNAP", ["cut just", "before hits"]),
+                      (121.0, "BAR", ["start on", "next bar"])]:
     add(text(lab, x, 55.0, CONTROL, FONT_BOLD, INK))
     for j, h in enumerate(hints):
         add(text(h, x, 69.6 + 2.6 * j, HINT, FONT_MED, SOFT))

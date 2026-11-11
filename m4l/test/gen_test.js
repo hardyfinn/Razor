@@ -1,7 +1,7 @@
 // Offline tests for the gen~ engine (m4l/razor.genexpr).
 // Translates the GenExpr into JavaScript (the code is written in a plain
 // style so this is a few text rules) and runs the same checks as
-// test/engine_test.cpp (except INSERT, which the Live version doesn't have).
+// test/engine_test.cpp.
 //   node m4l/test/gen_test.js
 "use strict";
 const { makeEngine } = require("./gen_translate");

@@ -141,28 +141,6 @@ int main() {
 		delete e;
 	}
 
-	// 5. INSERT adds the piece, then varispeed catches the lag back up to one bar
-	{
-		RazorEngine* e = fresh();
-		Run r(e);
-		e->insert = true;
-		e->catchRate = 0.12f;
-		r.stepTo(3 * BAR + 100);
-		e->arm(1);
-		r.stepTo(r.n + P + 10);
-		CHECK(e->reversing, "insert started");
-		double a = e->revA;
-		while (e->reversing) r.step();
-		CHECK(std::fabs(e->f - a) < 3, "after an insert the tape carries on from the start of the piece (%.0f vs %.0f)", e->f, a);
-		CHECK(e->lag() > BAR + P * 0.9, "lag grew by about a beat, got %.0f", e->lag());
-		r.stepTo(r.n + 2000);
-		CHECK(e->speed > 1.05, "running fast to catch up, speed %.3f", e->speed);
-		r.stepTo(r.n + (int64_t) (P / 0.12) + 20 * (int) SR / 10);
-		CHECK(std::fabs(e->lag() - BAR) < 1.0, "caught up to one bar, lag %.1f", e->lag());
-		CHECK(std::fabs(e->speed - 1.0) < 1e-3, "back to normal speed, %.4f", e->speed);
-		delete e;
-	}
-
 	// 6. BAR quantise starts on the first beat of a bar
 	{
 		RazorEngine* e = fresh();

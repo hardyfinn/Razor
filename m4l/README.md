@@ -1,8 +1,7 @@
 # Razor for Max for Live
 
 The Razor reverse-tape splice as an Ableton Live **audio effect**. It does the same thing as the
-VCV module (except INSERT mode, which the Live version leaves out: every splice goes back in
-place): the play head runs exactly **one bar behind** the record head, so the next ½, 1, 2
+VCV module: the play head runs exactly **one bar behind** the record head, so the next ½, 1, 2
 or 4 beats are always already on the tape and can be cut out, played backwards and spliced
 back in place, landing back on the grid.
 
@@ -63,5 +62,5 @@ yellow box where an armed reverse will cut, and an orange box for the piece bein
 - `razor.genexpr`: the engine (it goes in the gen~ codebox), ported from `src/RazorEngine.hpp`
 - `razor_display.js`: the display ([jsui])
 - `build_device.py`: writes `dist/Razor.amxd` (and a `.maxpat` copy for reading in Max)
-- `test/gen_test.js`: turns the GenExpr into JavaScript and runs the same 10 checks as the VCV
+- `test/gen_test.js`: turns the GenExpr into JavaScript and runs the same 9 checks as the VCV
   engine's tests: `node m4l/test/gen_test.js`

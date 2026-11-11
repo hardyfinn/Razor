@@ -52,7 +52,7 @@
   <img src="vcv.png" alt="Razor VCV panel">
   <div class="toc">
     <div><span>1</span>The idea: a tape loop with the heads one bar apart</div>
-    <div><span>2</span>The splice: REPLACE and INSERT</div>
+    <div><span>2</span>The splice: back in place, on the grid</div>
     <div><span>3</span>Shaping the cut: CUT, SNAP and ANGLE</div>
     <div><span>4</span>The VCV module: controls and jacks</div>
     <div><span>5</span>The Max for Live device: setup, keyboard and controls</div>
@@ -119,8 +119,7 @@
 
 <!-- ============ 2 THE SPLICE ============ -->
 <section class="page">
-  <h2>2 · The splice: REPLACE and INSERT</h2>
-  <h3>REPLACE (the default)</h3>
+  <h2>2 · The splice: back in place, on the grid</h2>
   <p>The reversed piece takes the forward piece's place. When it ends, the forward stream comes back exactly where it would have been. Nothing repeats, nothing is lost, and you stay on the grid. This is the real tape edit.</p>
   <div class="fig">
   <svg viewBox="0 0 640 150" width="640" xmlns="http://www.w3.org/2000/svg" font-family="Inter" font-size="11">
@@ -141,31 +140,8 @@
   </svg>
   </div>
 
-  <h3>INSERT</h3>
-  <p>The reversed piece is <b>added</b>: after it, the tape carries on from the start of B, so the stream falls behind the grid by the length of the piece. Razor then runs the tape slightly fast (varispeed) until it's back to exactly one bar late. You hear a small, gradual pitch rise as it catches up: the tape op's "fix it with varispeed" sound.</p>
-  <div class="fig">
-  <svg viewBox="0 0 640 175" width="640" xmlns="http://www.w3.org/2000/svg" font-family="Inter" font-size="11">
-    <text x="0" y="32" font-weight="700">you hear</text>
-    <g font-weight="700" fill="#fff" text-anchor="middle">
-      <rect x="70" y="14" width="110" height="28" fill="#5d636c"/><text x="125" y="33">A</text>
-      <rect x="180" y="14" width="110" height="28" fill="#e0682a"/><text x="235" y="33">← B rev</text>
-      <rect x="290" y="14" width="104" height="28" fill="#5d636c"/><text x="342" y="33">B</text>
-      <rect x="394" y="14" width="104" height="28" fill="#5d636c"/><text x="446" y="33">C</text>
-      <rect x="498" y="14" width="132" height="28" fill="#5d636c"/><text x="564" y="33">D …</text>
-    </g>
-    <text x="0" y="96" font-weight="700">lag</text>
-    <line x1="70" y1="140" x2="630" y2="140" stroke="#d9d6cf"/>
-    <text x="634" y="143" fill="#5f6670" font-size="9.5" text-anchor="end" dy="14">1 bar</text>
-    <path d="M70 140 H180 L290 90 L630 132" fill="none" stroke="#d9a520" stroke-width="2.5"/>
-    <text x="235" y="80" text-anchor="middle" fill="#5f6670">+1 beat</text>
-    <text x="470" y="80" text-anchor="middle" fill="#5f6670">running 2 / 6 / 12% fast until it's back to 1 bar</text>
-  </svg>
-  </div>
-  <p><b>INSERT is in the VCV module only.</b> The Live device always splices in place. The catch-up speed is in the VCV right-click menu: Gentle 2% (about ⅓ semitone), Medium 6% (about 1 semitone) or Fast 12% (about 2 semitones). At 6%, catching up a 1-beat insert takes about 17 beats.</p>
-  <div class="box">If an insert would push the lag past what the tape can hold, that piece is spliced as REPLACE instead.</div>
-
   <h3>Back to back</h3>
-  <p>Press a length while a reverse is playing and it's queued: it starts the moment the current piece ends (in INSERT mode, on the next beat after it). The light blinks while a press is waiting and stays on while it plays.</p>
+  <p>Press a length while a reverse is playing and it's queued: it starts the moment the current piece ends. The light blinks while a press is waiting and stays on while it plays.</p>
 </section>
 
 <!-- ============ 3 SHAPING THE CUT ============ -->
@@ -236,7 +212,6 @@
     <tr><td>gate jacks</td><td>One under each button: the same as pressing it, for DROID, Marbles, a sequencer… Each gate is checked against PROB first.</td></tr>
     <tr><td>SNAP</td><td>Cut 2 ms before the nearest hit (see section 3).</td></tr>
     <tr><td>BAR</td><td>Start on the next bar line, not the next beat. Patch RESET so Razor knows where your bar starts.</td></tr>
-    <tr><td>INSERT</td><td>Add the piece, then catch up with varispeed (see section 2).</td></tr>
     <tr><td>CUT</td><td>Move both cuts up to ⅛ beat earlier (CCW) or later (CW).</td></tr>
     <tr><td>ANGLE</td><td>Splice crossfade, 90° to 22.5°; yellow mark = 45°.</td></tr>
     <tr><td>PROB</td><td>The chance that a gate reverses (0–100%). Buttons ignore it.</td></tr>
@@ -252,7 +227,7 @@
     <tr><td>OUT L / OUT R</td><td>The tape: one bar late, with the splices.</td></tr>
     <tr><td>REV</td><td>10 V while a reversed piece plays. The red light shows the same.</td></tr>
   </table>
-  <p><b>Right-click menu:</b> clock pulses per beat (1, 2, 4, 24), INSERT catch-up speed, and <i>Clear the tape</i>.</p>
+  <p><b>Right-click menu:</b> clock pulses per beat (1, 2, 4, 24) and <i>Clear the tape</i>.</p>
 </section>
 
 <!-- ============ 5 M4L ============ -->
@@ -281,7 +256,7 @@
   <div class="box warn">Live only sends your computer keyboard to mapped controls when it isn't using the keyboard for MIDI. If your keys play notes, turn off <b>Computer MIDI Keyboard</b> (the <span class="key">M</span> key toggles it).</div>
 
   <h3>Controls</h3>
-  <p>The Live device has no INSERT mode (every splice goes back in place) and no PROB or CV input: Live's automation, clip envelopes and Follow Actions do that job.</p>
+  <p>The Live device has no PROB or CV input: Live's automation, clip envelopes and Follow Actions do that job.</p>
   <table>
     <tr><td>½ / 1 / 2 / 4</td><td>Reverse that many beats from the next beat (or bar).</td></tr>
     <tr><td>Cut</td><td>−100% to +100% = ⅛ beat earlier to ⅛ beat later.</td></tr>
@@ -297,8 +272,8 @@
   <div class="fig"><img src="display.png" style="width:85%; border-radius:3pt"><div class="cap">Halfway through a 1-beat reverse. Drawn by the Live device's display script from the engine's real output.</div></div>
   <p>Both versions show the same thing: the tape between the heads, scrolling left as it plays.</p>
   <table>
-    <tr><td>Status (top left)</td><td><b>FORWARD</b>; <b style="color:#b8860b">ARMED 2 BEATS: next beat</b> while a press waits; <b style="color:#e0682a">REVERSING 1 BEAT</b> while a piece plays (with "(insert)" in INSERT mode). VCV also shows "gate skipped (PROB)".</td></tr>
-    <tr><td>Top right</td><td>The tempo. After an INSERT: "catching up +6.0% +312 ms", meaning how fast the tape is running and how far behind the grid it still is.</td></tr>
+    <tr><td>Status (top left)</td><td><b>FORWARD</b>; <b style="color:#b8860b">ARMED 2 BEATS: next beat</b> while a press waits; <b style="color:#e0682a">REVERSING 1 BEAT</b> while a piece plays. VCV also shows "gate skipped (PROB)".</td></tr>
+    <tr><td>Top right</td><td>The tempo. After a tempo drift: "catching up +6.0% +312 ms", meaning how fast the tape is running and how far off the grid it still is.</td></tr>
     <tr><td>White line, left</td><td>The <b>play head</b>: what you hear. Half a beat of already-heard tape is shown to its left.</td></tr>
     <tr><td>Red line, right</td><td>The <b>record head</b>. Everything between the two lines is the bar you just played.</td></tr>
     <tr><td>Vertical lines</td><td>Beats; bar lines are brighter.</td></tr>
@@ -316,17 +291,15 @@
 
   <div class="idea"><b class="n">1</b><div><b>Reversed kick fills.</b> Four-to-the-floor kick into Razor. Hit <b>½</b> on beat 4 of every 8th bar. Turn SNAP on and CUT a little CCW so the reversed kick swells <i>into</i> the next downbeat. In Live, map ½ to a key and play it by hand, then record it as automation.</div></div>
 
-  <div class="idea"><b class="n">2</b><div><b>A loop that edits itself (VCV).</b> A DROID random gate or Marbles' t outputs into the gate jacks, PROB around 25%, and a slow random CV into CV set to <b>cut</b>. Every pass gets its own edits, and REPLACE always lands back on the grid, so it never drifts. A good starting point for Autechre-style self-mutating patterns.</div></div>
+  <div class="idea"><b class="n">2</b><div><b>A loop that edits itself (VCV).</b> A DROID random gate or Marbles' t outputs into the gate jacks, PROB around 25%, and a slow random CV into CV set to <b>cut</b>. Every pass gets its own edits, and every splice lands back on the grid, so it never drifts. A good starting point for Autechre-style self-mutating patterns.</div></div>
 
-  <div class="idea"><b class="n">3</b><div><b>Tape-op transitions (VCV).</b> INSERT on, catch-up Gentle, and press <b>4</b> on the last bar of a section: a whole bar flipped, then the music slides back onto the grid over the next few bars with a slight pitch rise. Works well on a whole-mix bus going into a breakdown.</div></div>
+  <div class="idea"><b class="n">3</b><div><b>Section markers.</b> In Live, put Razor on the master and write a <b>Rev 2</b> automation hit two beats before every new section. The reverse flags the change for the listener like an old edit-tape transition.</div></div>
 
-  <div class="idea"><b class="n">4</b><div><b>Section markers.</b> In Live, put Razor on the master and write a <b>Rev 2</b> automation hit two beats before every new section. The reverse flags the change for the listener like an old edit-tape transition.</div></div>
+  <div class="idea"><b class="n">4</b><div><b>REV as a modulation source (VCV).</b> REV into a VCA on a reverb send so only the reversed pieces get washed out. Or REV into a filter's CV for a darker reverse.</div></div>
 
-  <div class="idea"><b class="n">5</b><div><b>REV as a modulation source (VCV).</b> REV into a VCA on a reverb send so only the reversed pieces get washed out. Or REV into a filter's CV for a darker reverse.</div></div>
+  <div class="idea"><b class="n">5</b><div><b>Detroit chords, flipped.</b> Run a Hapax chord-playground pad through Razor and use <b>1</b> on the off-beat stabs with ANGLE near 22.5°. The soft splices turn each stab into a swelling reverse pad that resolves on the next beat.</div></div>
 
-  <div class="idea"><b class="n">6</b><div><b>Detroit chords, flipped.</b> Run a Hapax chord-playground pad through Razor and use <b>1</b> on the off-beat stabs with ANGLE near 22.5°. The soft splices turn each stab into a swelling reverse pad that resolves on the next beat.</div></div>
-
-  <div class="idea"><b class="n">7</b><div><b>Hand-played edits.</b> Map ½ / 1 / 2 / 4 to four pads. Treat them like a drummer's fills: play along with the bar you just heard, which is always the one sitting between the heads.</div></div>
+  <div class="idea"><b class="n">6</b><div><b>Hand-played edits.</b> Map ½ / 1 / 2 / 4 to four pads. Treat them like a drummer's fills: play along with the bar you just heard, which is always the one sitting between the heads.</div></div>
 
   <h3>Starting points</h3>
   <table>
@@ -351,18 +324,16 @@
   </ul>
   <h3>The tempo on the VCV display is four times too fast.</h3>
   <p>Your clock sends 16ths. Set <i>Clock pulses per beat</i> to 4 in the right-click menu.</p>
-  <h3>After INSERT the pitch drifts up (VCV).</h3>
-  <p>That's the catch-up: the tape runs fast until it's one bar late again. Use Gentle for a barely audible drift, or Fast to get back quickly.</p>
   <h3>Can I change the lag?</h3>
   <p>No. It's always exactly one bar, on purpose: it's easiest to play against, and it's long enough for every length.</p>
   <h3>Time signatures</h3>
   <p>Razor counts 4 beats to a bar. In Live it follows the tempo but assumes 4/4.</p>
   <h3>Technical notes</h3>
   <ul>
-    <li>The tape holds about 24 seconds in VCV and about 43 seconds at 48 kHz in Live: enough for a bar at 40 BPM, plus inserts in VCV.</li>
+    <li>The tape holds about 24 seconds in VCV and about 43 seconds at 48 kHz in Live: enough for a bar at 40 BPM, with room to spare.</li>
     <li>A big tempo change (more than 5%) jumps straight to one bar of the new tempo with a splice crossfade. Smaller drifts are followed with varispeed.</li>
     <li>SNAP's hit detector compares a fast and a slow envelope, so very soft or smeared material may give it nothing to snap to. Razor then cuts on the grid.</li>
-    <li>The engines are the same design in both versions: <code>src/RazorEngine.hpp</code> (VCV) and <code>m4l/razor.genexpr</code> (gen~). Both pass the same 10 offline tests.</li>
+    <li>The engines are the same design in both versions: <code>src/RazorEngine.hpp</code> (VCV) and <code>m4l/razor.genexpr</code> (gen~). Both pass the same 9 offline tests.</li>
   </ul>
 </section>
 
