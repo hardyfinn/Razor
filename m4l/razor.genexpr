@@ -11,63 +11,7 @@
 //
 // Every History is copied into a local at the top and written back at the
 // bottom, so the code means the same thing whenever gen~ applies the writes.
-
-Param cut(0, min=-1, max=1);           // CUT: -1..1 = -1/8..+1/8 beat
-Param angle(45, min=22.5, max=90);     // splice angle in degrees
-Param snap(0, min=0, max=1);
-Param barq(0, min=0, max=1);
-Param insert(0, min=0, max=1);
-Param catchrate(0.06, min=0, max=0.5);
-Param tempo(120, min=20, max=999);     // Live's tempo, used before the first beat
-Param armseq(0);                       // changes each time a length is pressed
-Param armlen(1, min=0, max=3);         // which length: 0 = 1/2, 1 = 1, 2 = 2, 3 = 4 beats
-Param clearseq(0);                     // changes when "Clear tape" is pressed
-
-Data tapeL(2097152);
-Data tapeR(2097152);
-Data beatPos(64);
-Data beatIdx(64);
-Data onsets(128);
-Buffer pk("razorpk");                  // peaks for the display, rebound to ---razorpk
-Buffer st("razorst");                  // state for the display, rebound to ---razorst
-
-History h_w(0);
-History h_lo(0);
-History h_f(0);
-History h_speed(1);
-History h_period(0);
-History h_mode(0);
-History h_mpos(0);
-History h_gpos(0);
-History h_gdir(1);
-History h_gspeed(1);
-History h_fadelen(0);
-History h_fadeleft(0);
-History h_reva(0);
-History h_revb(0);
-History h_revins(0);
-History h_pend(-1);
-History h_plana(-1);
-History h_active(-1);
-History h_bhead(0);
-History h_bcount(0);
-History h_bindex(0);
-History h_lastbeat(-1);
-History h_jump(0);
-History h_ohead(0);
-History h_ocount(0);
-History h_envf(0);
-History h_envs(0);
-History h_prevmono(0);
-History h_lastonset(-1000000);
-History h_pbeat(0);
-History h_pbar(0);
-History h_bmoving(0);
-History h_barmoving(0);
-History h_barpend(0);
-History h_parm(0);
-History h_pclear(0);
-History h_init(0);
+// gen~ needs the function definitions first, before the declarations.
 
 lenBeats(i) {
 	r = 4;
@@ -165,6 +109,64 @@ findStart(startFrom, bpData, biData, onData, bhead, bcount, barOn, cutBeats, per
 	}
 	return res, resK;
 }
+
+// ---------------------------------------------------------------------------
+Param cut(0, min=-1, max=1);           // CUT: -1..1 = -1/8..+1/8 beat
+Param angle(45, min=22.5, max=90);     // splice angle in degrees
+Param snap(0, min=0, max=1);
+Param barq(0, min=0, max=1);
+Param insert(0, min=0, max=1);
+Param catchrate(0.06, min=0, max=0.5);
+Param tempo(120, min=20, max=999);     // Live's tempo, used before the first beat
+Param armseq(0);                       // changes each time a length is pressed
+Param armlen(1, min=0, max=3);         // which length: 0 = 1/2, 1 = 1, 2 = 2, 3 = 4 beats
+Param clearseq(0);                     // changes when "Clear tape" is pressed
+
+Data tapeL(2097152);
+Data tapeR(2097152);
+Data beatPos(64);
+Data beatIdx(64);
+Data onsets(128);
+Buffer pk("razorpk");                  // peaks for the display, rebound to ---razorpk
+Buffer st("razorst");                  // state for the display, rebound to ---razorst
+
+History h_w(0);
+History h_lo(0);
+History h_f(0);
+History h_speed(1);
+History h_period(0);
+History h_mode(0);
+History h_mpos(0);
+History h_gpos(0);
+History h_gdir(1);
+History h_gspeed(1);
+History h_fadelen(0);
+History h_fadeleft(0);
+History h_reva(0);
+History h_revb(0);
+History h_revins(0);
+History h_pend(-1);
+History h_plana(-1);
+History h_active(-1);
+History h_bhead(0);
+History h_bcount(0);
+History h_bindex(0);
+History h_lastbeat(-1);
+History h_jump(0);
+History h_ohead(0);
+History h_ocount(0);
+History h_envf(0);
+History h_envs(0);
+History h_prevmono(0);
+History h_lastonset(-1000000);
+History h_pbeat(0);
+History h_pbar(0);
+History h_bmoving(0);
+History h_barmoving(0);
+History h_barpend(0);
+History h_parm(0);
+History h_pclear(0);
+History h_init(0);
 
 // ---------------------------------------------------------------------------
 size = 2097152;
