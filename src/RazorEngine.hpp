@@ -173,8 +173,10 @@ struct RazorEngine {
 	double snapEdge(double x) const {
 		if (!snap) return x;
 		double win = period / 8.0, best = x, bestD = win;
-		for (int k = 0; k < onsetCount; k++) {
+		// newest first; stop once the hits are older than the window
+		for (int k = onsetCount - 1; k >= 0; k--) {
 			double o = onsetAt(k);
+			if (o < x - win) break;
 			double d = std::fabs(o - x);
 			if (d <= bestD) { bestD = d; best = o - 0.002 * sampleRate; }
 		}
@@ -204,6 +206,7 @@ struct RazorEngine {
 		for (int k = 0; k < beatCount; k++) {
 			const Beat& b = beatAt(k);
 			if (quantBar && (b.idx % 4) != 0) continue;
+			if (b.pos + o + period / 8.0 < from) continue;  // too old, even after snapping
 			double a = snapEdge(b.pos) + o;
 			if (a >= from) {
 				if (beatIdxOut) *beatIdxOut = b.idx;

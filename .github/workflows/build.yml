@@ -28,6 +28,7 @@ jobs:
       - name: Test the engine
         run: |
           c++ -std=c++11 -O2 -o test/engine_test test/engine_test.cpp && test/engine_test
+          node m4l/test/gen_test.js
       - name: Build
         run: make dist RACK_DIR="$RUNNER_TEMP/Rack-SDK" -j3
       - uses: actions/upload-artifact@v4

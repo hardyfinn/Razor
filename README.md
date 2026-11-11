@@ -86,6 +86,11 @@ tape**.
 4. **REV as a modulation source.** REV into a VCA on a reverb send, so only the
    reversed pieces get washed out.
 
+## Max for Live
+
+There's also a Max for Live audio effect version for Ableton Live, with the same engine
+ported to gen~: see [m4l/README.md](m4l/README.md).
+
 ## Building
 
 The engine (`src/RazorEngine.hpp`) has no Rack code and is tested on its own:

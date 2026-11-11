@@ -1,0 +1,554 @@
+// Razor for Max for Live: the gen~ engine (GenExpr, goes in a codebox).
+// A port of src/RazorEngine.hpp. The play head runs exactly one bar (4 beats)
+// behind the record head, so the next 1/2, 1, 2 or 4 beats are always on the
+// tape and can be played backwards and spliced back in place.
+//
+// in1, in2: audio L, R
+// in3: beat phase from [phasor~ 4n @lock 1] (follows Live's transport)
+// in4: bar phase from [phasor~ 1n @lock 1]
+// out1, out2: audio L, R (one bar late, with the splices)
+// out3: 1 while a reversed piece plays
+//
+// Every History is copied into a local at the top and written back at the
+// bottom, so the code means the same thing whenever gen~ applies the writes.
+
+Param cut(0, min=-1, max=1);           // CUT: -1..1 = -1/8..+1/8 beat
+Param angle(45, min=22.5, max=90);     // splice angle in degrees
+Param snap(0, min=0, max=1);
+Param barq(0, min=0, max=1);
+Param insert(0, min=0, max=1);
+Param catchrate(0.06, min=0, max=0.5);
+Param tempo(120, min=20, max=999);     // Live's tempo, used before the first beat
+Param armseq(0);                       // changes each time a length is pressed
+Param armlen(1, min=0, max=3);         // which length: 0 = 1/2, 1 = 1, 2 = 2, 3 = 4 beats
+Param clearseq(0);                     // changes when "Clear tape" is pressed
+
+Data tapeL(2097152);
+Data tapeR(2097152);
+Data beatPos(64);
+Data beatIdx(64);
+Data onsets(128);
+Buffer pk("razorpk");                  // peaks for the display, rebound to ---razorpk
+Buffer st("razorst");                  // state for the display, rebound to ---razorst
+
+History h_w(0);
+History h_lo(0);
+History h_f(0);
+History h_speed(1);
+History h_period(0);
+History h_mode(0);
+History h_mpos(0);
+History h_gpos(0);
+History h_gdir(1);
+History h_gspeed(1);
+History h_fadelen(0);
+History h_fadeleft(0);
+History h_reva(0);
+History h_revb(0);
+History h_revins(0);
+History h_pend(-1);
+History h_plana(-1);
+History h_active(-1);
+History h_bhead(0);
+History h_bcount(0);
+History h_bindex(0);
+History h_lastbeat(-1);
+History h_jump(0);
+History h_ohead(0);
+History h_ocount(0);
+History h_envf(0);
+History h_envs(0);
+History h_prevmono(0);
+History h_lastonset(-1000000);
+History h_pbeat(0);
+History h_pbar(0);
+History h_bmoving(0);
+History h_barmoving(0);
+History h_barpend(0);
+History h_parm(0);
+History h_pclear(0);
+History h_init(0);
+
+lenBeats(i) {
+	r = 4;
+	if (i < 0.5) {
+		r = 0.5;
+	} else if (i < 1.5) {
+		r = 1;
+	} else if (i < 2.5) {
+		r = 2;
+	}
+	return r;
+}
+
+spliceSeconds(deg) {
+	a = deg * pi / 180;
+	s = 6.35 * cos(a) / sin(a) / 381;
+	return max(0.0002, s);
+}
+
+ringIdx(head, count, k, n) {
+	j = head - count + k + n;
+	return j - floor(j / n) * n;
+}
+
+tapeAt(tape, i, newest, size, lo) {
+	v = 0;
+	if (i >= 0 && i <= newest && i > newest - size && i >= lo) {
+		v = peek(tape, i - floor(i / size) * size, 0);
+	}
+	return v;
+}
+
+readTape(tape, pos, newest, size, lo) {
+	p = min(pos, newest);
+	fl = floor(p);
+	t = p - fl;
+	y0 = tapeAt(tape, fl - 1, newest, size, lo);
+	y1 = tapeAt(tape, fl, newest, size, lo);
+	y2 = tapeAt(tape, fl + 1, newest, size, lo);
+	y3 = tapeAt(tape, fl + 2, newest, size, lo);
+	c1 = 0.5 * (y2 - y0);
+	c2 = y0 - 2.5 * y1 + 2 * y2 - 0.5 * y3;
+	c3 = 0.5 * (y3 - y0) + 1.5 * (y1 - y2);
+	return ((c3 * t + c2) * t + c1) * t + y1;
+}
+
+// SNAP: the nearest hit within 1/8 beat of x, minus 2 ms, so the razor lands
+// just before the transient. x itself when SNAP is off or there's no hit.
+snapEdge(x, snapOn, period, onData, ohead, ocount, sr) {
+	best = x;
+	win = period / 8;
+	bestD = win;
+	k = 0;
+	o = 0;
+	d = 0;
+	if (snapOn > 0.5) {
+		for (k = ocount - 1; k >= 0; k -= 1) {
+			o = peek(onData, ringIdx(ohead, ocount, k, 128), 0);
+			if (o < x - win) {
+				break;
+			}
+			d = abs(o - x);
+			if (d <= bestD) {
+				bestD = d;
+				best = o - 0.002 * sr;
+			}
+		}
+	}
+	return best;
+}
+
+// The first start edge at or after startFrom: the next beat (or bar), snapped and
+// moved by CUT. Returns -1 when that beat isn't on the tape yet.
+findStart(startFrom, bpData, biData, onData, bhead, bcount, barOn, cutBeats, period, snapOn, ohead, ocount, sr) {
+	res = -1;
+	resK = -1;
+	k = 0;
+	j = 0;
+	idx = 0;
+	bp = 0;
+	a = 0;
+	o = cutBeats * period;
+	for (k = 0; k < bcount; k += 1) {
+		j = ringIdx(bhead, bcount, k, 64);
+		idx = peek(biData, j, 0);
+		bp = peek(bpData, j, 0);
+		if ((barOn < 0.5 || idx - floor(idx / 4) * 4 < 0.5) && bp + o + period / 8 >= startFrom) {
+			a = snapEdge(bp, snapOn, period, onData, ohead, ocount, sr) + o;
+			if (a >= startFrom) {
+				res = a;
+				resK = k;
+				break;
+			}
+		}
+	}
+	return res, resK;
+}
+
+// ---------------------------------------------------------------------------
+size = 2097152;
+PB = 256;
+PKN = 8192;
+sr = samplerate;
+
+// ---- state into locals ----
+w = h_w;
+lo = h_lo;
+f = h_f;
+speed = h_speed;
+period = h_period;
+mode = h_mode;
+mpos = h_mpos;
+gpos = h_gpos;
+gdir = h_gdir;
+gspeed = h_gspeed;
+fadelen = h_fadelen;
+fadeleft = h_fadeleft;
+reva = h_reva;
+revb = h_revb;
+revins = h_revins;
+pend = h_pend;
+plana = h_plana;
+active = h_active;
+bhead = h_bhead;
+bcount = h_bcount;
+bindex = h_bindex;
+lastbeat = h_lastbeat;
+jump = h_jump;
+ohead = h_ohead;
+ocount = h_ocount;
+envf = h_envf;
+envs = h_envs;
+prevmono = h_prevmono;
+lastonset = h_lastonset;
+barpend = h_barpend;
+
+// other locals
+cutB = cut / 8;
+newest = 0;
+target = 0;
+lag = 0;
+err = 0;
+want = 1;
+a = -1;
+k = -1;
+b = 0;
+n = 0;
+whole = 0;
+nominal = 0;
+over = 0;
+j = 0;
+p = 0;
+beat = 0;
+bar = 0;
+wi = 0;
+pb = 0;
+mono = 0;
+d = 0;
+x = 0;
+refr = 0;
+outL = 0;
+outR = 0;
+gl = 0;
+gr = 0;
+t = 0;
+gin = 0;
+gout = 0;
+fwdpos = 0;
+fromPos = 0;
+bmov = 0;
+barmov = 0;
+
+if (h_init < 0.5) {
+	period = sr * 60 / tempo;
+	f = -1 - 4 * period;
+	mpos = f;
+}
+
+// ---- clear the tape: everything recorded so far reads as silence ----
+if (clearseq != h_pclear) {
+	lo = w;
+	mode = 0;
+	pend = -1;
+	plana = -1;
+	active = -1;
+	fadeleft = 0;
+	bcount = 0;
+	ocount = 0;
+	lastbeat = -1;
+	f = w - 1 - 4 * period;
+	mpos = f;
+	speed = 1;
+}
+
+// ---- record ----
+wi = w - floor(w / size) * size;
+poke(tapeL, in1, wi, 0);
+poke(tapeR, in2, wi, 0);
+mono = 0.5 * (in1 + in2);
+pb = floor(w / PB);
+pb = pb - floor(pb / PKN) * PKN;
+if (w - floor(w / PB) * PB < 0.5) {
+	poke(pk, 0, pb, 0);
+}
+poke(pk, max(peek(pk, pb, 0), abs(mono)), pb, 0);
+
+// hit detector: a fast envelope jumping well above a slow one
+d = mono - prevmono;
+prevmono = mono;
+x = abs(mono) + 4 * abs(d);
+if (x > envf) {
+	envf = envf + (x - envf) * (1 - exp(-1 / (0.0005 * sr)));
+} else {
+	envf = envf + (x - envf) * (1 - exp(-1 / (0.03 * sr)));
+}
+envs = envs + (x - envs) * (1 - exp(-1 / (0.15 * sr)));
+refr = (w - lastonset) < 0.06 * sr;
+if (!refr && envf > 2.5 * envs + 0.01) {
+	lastonset = w;
+	poke(onsets, w - 0.001 * sr, ohead, 0);
+	ohead = ohead + 1;
+	ohead = ohead - floor(ohead / 128) * 128;
+	ocount = min(ocount + 1, 128);
+}
+w = w + 1;
+newest = w - 1;
+
+// ---- clock from Live's transport ----
+bmov = in3 != h_pbeat;
+barmov = in4 != h_pbar;
+if (in3 < h_pbeat - 0.5) {
+	beat = 1;
+} else if (bmov && h_bmoving < 0.5 && in3 < 0.02) {
+	beat = 1;   // the transport just started on a beat
+}
+if (in4 < h_pbar - 0.5) {
+	bar = 1;
+} else if (barmov && h_barmoving < 0.5 && in4 < 0.02) {
+	bar = 1;
+}
+if (bar > 0.5) {
+	if (beat > 0.5) {
+		bindex = 0;
+	} else if (bcount > 0 && newest - lastbeat < 64) {
+		// the bar wrapped a hair after the beat: that beat was the downbeat
+		poke(beatIdx, 0, ringIdx(bhead, bcount, bcount - 1, 64), 0);
+		bindex = 1;
+	} else {
+		barpend = 1;
+	}
+}
+if (beat > 0.5) {
+	if (barpend > 0.5) {
+		bindex = 0;
+		barpend = 0;
+	}
+	if (lastbeat >= 0) {
+		p = newest - lastbeat;
+		if (p > sr * 0.1 && p < sr * 2) {
+			if (abs(p - period) > 0.05 * period) {
+				jump = 1;
+			}
+			period = p;
+		}
+	}
+	lastbeat = newest;
+	poke(beatPos, newest, bhead, 0);
+	poke(beatIdx, bindex, bhead, 0);
+	bindex = bindex + 1;
+	bhead = bhead + 1;
+	bhead = bhead - floor(bhead / 64) * 64;
+	bcount = min(bcount + 1, 64);
+} else if (bcount == 0 && abs(sr * 60 / tempo - period) > 1) {
+	period = sr * 60 / tempo;
+	jump = 1;
+}
+
+// ---- a press ----
+if (armseq != h_parm) {
+	pend = armlen;
+	plana = -1;
+}
+
+target = min(4 * period, size - sr);
+
+// ---- play ----
+if (mode < 0.5) {
+	lag = newest - f;
+	err = lag - 1 - target;
+	if (jump > 0.5) {
+		// a big tempo change: jump straight to one bar of the new tempo
+		jump = 0;
+		if (abs(err) > 0.02 * target) {
+			fadelen = spliceSeconds(angle) * sr;
+			fadeleft = fadelen;
+			gpos = mpos;
+			gdir = 1;
+			gspeed = speed;
+			f = newest - 1 - target;
+			speed = 1;
+		}
+		err = 0;
+	}
+	// varispeed: a little fast (or slow) until the gap is one bar again
+	want = 1;
+	if (abs(err) > 0.5) {
+		want = 1 + catchrate * clamp(err / (0.02 * sr), -1, 1);
+	}
+	speed = speed + (want - speed) / (0.03 * sr);
+	if (abs(err) <= 0.5 && abs(speed - 1) < 0.0001) {
+		speed = 1;
+	}
+	a = -1;
+	k = -1;
+	if (pend >= 0) {
+		a, k = findStart(f, beatPos, beatIdx, onsets, bhead, bcount, barq, cutB, period, snap, ohead, ocount, sr);
+	}
+	plana = a;
+	f = f + speed;
+	mpos = f;
+	if (a >= 0 && f >= a) {
+		// ---- the razor: start playing the piece backwards ----
+		over = f - a;
+		n = lenBeats(pend);
+		j = ringIdx(bhead, bcount, k, 64);
+		nominal = peek(beatPos, j, 0) + n * period;
+		whole = floor(n);
+		if (whole == n && k + whole < bcount) {
+			nominal = peek(beatPos, ringIdx(bhead, bcount, k + whole, 64), 0);
+		}
+		b = snapEdge(nominal, snap, period, onsets, ohead, ocount, sr) + cutB * period;
+		b = min(b, newest);
+		b = max(b, a + 0.25 * n * period);
+		revins = (insert > 0.5 && (newest - a) + (b - a) < size - sr);
+		fadelen = spliceSeconds(angle) * sr;
+		fadeleft = fadelen;
+		gpos = mpos;
+		gdir = 1;
+		gspeed = speed;
+		reva = a;
+		revb = b;
+		mode = 1;
+		mpos = b - over;
+		active = pend;
+		pend = -1;
+		plana = -1;
+	}
+} else {
+	mpos = mpos - 1;
+	if (mpos <= reva) {
+		// ---- the end of the piece: splice back into the forward tape ----
+		over = reva - mpos;
+		fadelen = spliceSeconds(angle) * sr;
+		fadeleft = fadelen;
+		gpos = mpos;
+		gdir = -1;
+		gspeed = 1;
+		mode = 0;
+		f = over;
+		if (revins > 0.5) {
+			f = f + reva;
+		} else {
+			f = f + revb;
+		}
+		mpos = f;
+		active = -1;
+		speed = 1;
+		// back to back: a length pressed during this reverse starts right here
+		if (pend >= 0) {
+			fromPos = f - 0.5;
+			if (revins > 0.5) {
+				fromPos = f + 1;
+			}
+			a, k = findStart(fromPos, beatPos, beatIdx, onsets, bhead, bcount, barq, cutB, period, snap, ohead, ocount, sr);
+			plana = a;
+			if (a >= 0 && a <= f + 0.5) {
+				over = max(0, f - a);
+				n = lenBeats(pend);
+				j = ringIdx(bhead, bcount, k, 64);
+				nominal = peek(beatPos, j, 0) + n * period;
+				whole = floor(n);
+				if (whole == n && k + whole < bcount) {
+					nominal = peek(beatPos, ringIdx(bhead, bcount, k + whole, 64), 0);
+				}
+				b = snapEdge(nominal, snap, period, onsets, ohead, ocount, sr) + cutB * period;
+				b = min(b, newest);
+				b = max(b, a + 0.25 * n * period);
+				revins = (insert > 0.5 && (newest - a) + (b - a) < size - sr);
+				reva = a;
+				revb = b;
+				mode = 1;
+				mpos = b - over;
+				active = pend;
+				pend = -1;
+				plana = -1;
+			}
+		}
+	}
+}
+
+// ---- output, with the splice crossfade ----
+outL = readTape(tapeL, mpos, newest, size, lo);
+outR = readTape(tapeR, mpos, newest, size, lo);
+if (fadeleft > 0) {
+	gl = readTape(tapeL, gpos, newest, size, lo);
+	gr = readTape(tapeR, gpos, newest, size, lo);
+	t = 1 - fadeleft / fadelen;
+	gin = sin(t * halfpi);
+	gout = cos(t * halfpi);
+	outL = outL * gin + gl * gout;
+	outR = outR * gin + gr * gout;
+	gpos = gpos + gdir * gspeed;
+	fadeleft = fadeleft - 1;
+}
+out1 = outL;
+out2 = outR;
+out3 = mode;
+
+// ---- state for the display, every 64 samples (relative positions fit in
+// the display's 32-bit buffer~) ----
+if (newest - floor(newest / 64) * 64 < 0.5) {
+	fwdpos = f;
+	if (mode > 0.5) {
+		fwdpos = reva;
+	}
+	poke(st, newest - floor(newest / (PKN * PB)) * (PKN * PB), 0, 0);
+	poke(st, newest - mpos, 1, 0);
+	poke(st, newest - fwdpos, 2, 0);
+	poke(st, newest - reva, 3, 0);
+	poke(st, newest - revb, 4, 0);
+	poke(st, plana >= 0 ? newest - plana : -1, 5, 0);
+	poke(st, pend, 6, 0);
+	poke(st, active, 7, 0);
+	poke(st, mode, 8, 0);
+	poke(st, revins, 9, 0);
+	poke(st, period, 10, 0);
+	poke(st, lastbeat >= 0 ? newest - lastbeat : -1, 11, 0);
+	poke(st, bindex, 12, 0);
+	poke(st, speed, 13, 0);
+	poke(st, (newest - fwdpos) - target, 14, 0);
+	poke(st, sr, 15, 0);
+	poke(st, barq, 16, 0);
+	poke(st, snap, 17, 0);
+	poke(st, pend >= 0 ? lenBeats(pend) * period : 0, 18, 0);
+}
+
+// ---- locals back into state ----
+h_w = w;
+h_lo = lo;
+h_f = f;
+h_speed = speed;
+h_period = period;
+h_mode = mode;
+h_mpos = mpos;
+h_gpos = gpos;
+h_gdir = gdir;
+h_gspeed = gspeed;
+h_fadelen = fadelen;
+h_fadeleft = fadeleft;
+h_reva = reva;
+h_revb = revb;
+h_revins = revins;
+h_pend = pend;
+h_plana = plana;
+h_active = active;
+h_bhead = bhead;
+h_bcount = bcount;
+h_bindex = bindex;
+h_lastbeat = lastbeat;
+h_jump = jump;
+h_ohead = ohead;
+h_ocount = ocount;
+h_envf = envf;
+h_envs = envs;
+h_prevmono = prevmono;
+h_lastonset = lastonset;
+h_barpend = barpend;
+h_pbeat = in3;
+h_pbar = in4;
+h_bmoving = bmov;
+h_barmoving = barmov;
+h_parm = armseq;
+h_pclear = clearseq;
+h_init = 1;
