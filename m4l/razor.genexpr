@@ -9,6 +9,9 @@
 // out1, out2: audio L, R (one bar late, with the splices)
 // out3: 1 while a reversed piece plays
 //
+// The Live version always splices in place (no INSERT mode). Varispeed is
+// only used to follow small tempo drifts.
+//
 // Every History is copied into a local at the top and written back at the
 // bottom, so the code means the same thing whenever gen~ applies the writes.
 // gen~ needs the function definitions first, before the declarations.
@@ -115,8 +118,6 @@ Param cut(0, min=-1, max=1);           // CUT: -1..1 = -1/8..+1/8 beat
 Param angle(45, min=22.5, max=90);     // splice angle in degrees
 Param snap(0, min=0, max=1);
 Param barq(0, min=0, max=1);
-Param insert(0, min=0, max=1);
-Param catchrate(0.06, min=0, max=0.5);
 Param tempo(120, min=20, max=999);     // Live's tempo, used before the first beat
 Param armseq(0);                       // changes each time a length is pressed
 Param armlen(1, min=0, max=3);         // which length: 0 = 1/2, 1 = 1, 2 = 2, 3 = 4 beats
@@ -144,7 +145,6 @@ History h_fadelen(0);
 History h_fadeleft(0);
 History h_reva(0);
 History h_revb(0);
-History h_revins(0);
 History h_pend(-1);
 History h_plana(-1);
 History h_active(-1);
@@ -189,7 +189,6 @@ fadelen = h_fadelen;
 fadeleft = h_fadeleft;
 reva = h_reva;
 revb = h_revb;
-revins = h_revins;
 pend = h_pend;
 plana = h_plana;
 active = h_active;
@@ -376,7 +375,7 @@ if (mode < 0.5) {
 	// varispeed: a little fast (or slow) until the gap is one bar again
 	want = 1;
 	if (abs(err) > 0.5) {
-		want = 1 + catchrate * clamp(err / (0.02 * sr), -1, 1);
+		want = 1 + 0.06 * clamp(err / (0.02 * sr), -1, 1);
 	}
 	speed = speed + (want - speed) / (0.03 * sr);
 	if (abs(err) <= 0.5 && abs(speed - 1) < 0.0001) {
@@ -403,7 +402,6 @@ if (mode < 0.5) {
 		b = snapEdge(nominal, snap, period, onsets, ohead, ocount, sr) + cutB * period;
 		b = min(b, newest);
 		b = max(b, a + 0.25 * n * period);
-		revins = (insert > 0.5 && (newest - a) + (b - a) < size - sr);
 		fadelen = spliceSeconds(angle) * sr;
 		fadeleft = fadelen;
 		gpos = mpos;
@@ -428,21 +426,13 @@ if (mode < 0.5) {
 		gdir = -1;
 		gspeed = 1;
 		mode = 0;
-		f = over;
-		if (revins > 0.5) {
-			f = f + reva;
-		} else {
-			f = f + revb;
-		}
+		f = revb + over;
 		mpos = f;
 		active = -1;
 		speed = 1;
 		// back to back: a length pressed during this reverse starts right here
 		if (pend >= 0) {
 			fromPos = f - 0.5;
-			if (revins > 0.5) {
-				fromPos = f + 1;
-			}
 			a, k = findStart(fromPos, beatPos, beatIdx, onsets, bhead, bcount, barq, cutB, period, snap, ohead, ocount, sr);
 			plana = a;
 			if (a >= 0 && a <= f + 0.5) {
@@ -457,8 +447,7 @@ if (mode < 0.5) {
 				b = snapEdge(nominal, snap, period, onsets, ohead, ocount, sr) + cutB * period;
 				b = min(b, newest);
 				b = max(b, a + 0.25 * n * period);
-				revins = (insert > 0.5 && (newest - a) + (b - a) < size - sr);
-				reva = a;
+						reva = a;
 				revb = b;
 				mode = 1;
 				mpos = b - over;
@@ -504,7 +493,7 @@ if (newest - floor(newest / 64) * 64 < 0.5) {
 	poke(st, pend, 6, 0);
 	poke(st, active, 7, 0);
 	poke(st, mode, 8, 0);
-	poke(st, revins, 9, 0);
+	poke(st, 0, 9, 0);
 	poke(st, period, 10, 0);
 	poke(st, lastbeat >= 0 ? newest - lastbeat : -1, 11, 0);
 	poke(st, bindex, 12, 0);
@@ -531,7 +520,6 @@ h_fadelen = fadelen;
 h_fadeleft = fadeleft;
 h_reva = reva;
 h_revb = revb;
-h_revins = revins;
 h_pend = pend;
 h_plana = plana;
 h_active = active;

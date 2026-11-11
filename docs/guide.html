@@ -161,7 +161,7 @@
     <text x="470" y="80" text-anchor="middle" fill="#5f6670">running 2 / 6 / 12% fast until it's back to 1 bar</text>
   </svg>
   </div>
-  <p>The catch-up speed is in the right-click menu (VCV) or the <b>Insert catch-up</b> menu (Live): Gentle 2% (about ⅓ semitone), Medium 6% (about 1 semitone) or Fast 12% (about 2 semitones). At 6%, catching up a 1-beat insert takes about 17 beats.</p>
+  <p><b>INSERT is in the VCV module only.</b> The Live device always splices in place. The catch-up speed is in the VCV right-click menu: Gentle 2% (about ⅓ semitone), Medium 6% (about 1 semitone) or Fast 12% (about 2 semitones). At 6%, catching up a 1-beat insert takes about 17 beats.</p>
   <div class="box">If an insert would push the lag past what the tape can hold, that piece is spliced as REPLACE instead.</div>
 
   <h3>Back to back</h3>
@@ -277,18 +277,17 @@
     <li>Click <b>½</b>, then press the key you want, for example <span class="key">1</span>. Then <b>1</b> → <span class="key">2</span>, <b>2</b> → <span class="key">3</span>, <b>4</b> → <span class="key">4</span>.</li>
     <li>Press <span class="key">Cmd/Ctrl+K</span> again to leave Key Map mode.</li>
   </ol>
-  <p><span class="key">Cmd/Ctrl+M</span> does the same for MIDI pads or a keyboard. SNAP, BAR, INSERT and Clear tape can be mapped too. The buttons can also be <b>automated</b> in the Arrangement, so you can write reverses into the song.</p>
+  <p><span class="key">Cmd/Ctrl+M</span> does the same for MIDI pads or a keyboard. SNAP, BAR and Clear tape can be mapped too. The buttons can also be <b>automated</b> in the Arrangement, so you can write reverses into the song.</p>
   <div class="box warn">Live only sends your computer keyboard to mapped controls when it isn't using the keyboard for MIDI. If your keys play notes, turn off <b>Computer MIDI Keyboard</b> (the <span class="key">M</span> key toggles it).</div>
 
   <h3>Controls</h3>
-  <p>No PROB or CV input here: Live's automation, clip envelopes and Follow Actions do that job.</p>
+  <p>The Live device has no INSERT mode (every splice goes back in place) and no PROB or CV input: Live's automation, clip envelopes and Follow Actions do that job.</p>
   <table>
     <tr><td>½ / 1 / 2 / 4</td><td>Reverse that many beats from the next beat (or bar).</td></tr>
     <tr><td>Cut</td><td>−100% to +100% = ⅛ beat earlier to ⅛ beat later.</td></tr>
     <tr><td>Angle</td><td>Splice angle in degrees, 22.5–90. Default 45°.</td></tr>
-    <tr><td>SNAP · BAR · INSERT</td><td>As on the VCV module.</td></tr>
-    <tr><td>Insert catch-up</td><td>Gentle 2%, Medium 6%, Fast 12%.</td></tr>
-    <tr><td>Clear tape · REV</td><td>Silence the whole tape · lights while a piece plays reversed.</td></tr>
+    <tr><td>SNAP · BAR</td><td>As on the VCV module.</td></tr>
+    <tr><td>Clear tape</td><td>Silence the whole tape (for example after a break).</td></tr>
   </table>
 </section>
 
@@ -319,7 +318,7 @@
 
   <div class="idea"><b class="n">2</b><div><b>A loop that edits itself (VCV).</b> A DROID random gate or Marbles' t outputs into the gate jacks, PROB around 25%, and a slow random CV into CV set to <b>cut</b>. Every pass gets its own edits, and REPLACE always lands back on the grid, so it never drifts. A good starting point for Autechre-style self-mutating patterns.</div></div>
 
-  <div class="idea"><b class="n">3</b><div><b>Tape-op transitions.</b> INSERT on, catch-up Gentle, and press <b>4</b> on the last bar of a section: a whole bar flipped, then the music slides back onto the grid over the next few bars with a slight pitch rise. Works well on the master going into a breakdown.</div></div>
+  <div class="idea"><b class="n">3</b><div><b>Tape-op transitions (VCV).</b> INSERT on, catch-up Gentle, and press <b>4</b> on the last bar of a section: a whole bar flipped, then the music slides back onto the grid over the next few bars with a slight pitch rise. Works well on a whole-mix bus going into a breakdown.</div></div>
 
   <div class="idea"><b class="n">4</b><div><b>Section markers.</b> In Live, put Razor on the master and write a <b>Rev 2</b> automation hit two beats before every new section. The reverse flags the change for the listener like an old edit-tape transition.</div></div>
 
@@ -352,7 +351,7 @@
   </ul>
   <h3>The tempo on the VCV display is four times too fast.</h3>
   <p>Your clock sends 16ths. Set <i>Clock pulses per beat</i> to 4 in the right-click menu.</p>
-  <h3>After INSERT the pitch drifts up.</h3>
+  <h3>After INSERT the pitch drifts up (VCV).</h3>
   <p>That's the catch-up: the tape runs fast until it's one bar late again. Use Gentle for a barely audible drift, or Fast to get back quickly.</p>
   <h3>Can I change the lag?</h3>
   <p>No. It's always exactly one bar, on purpose: it's easiest to play against, and it's long enough for every length.</p>
@@ -360,7 +359,7 @@
   <p>Razor counts 4 beats to a bar. In Live it follows the tempo but assumes 4/4.</p>
   <h3>Technical notes</h3>
   <ul>
-    <li>The tape holds about 24 seconds in VCV and about 43 seconds at 48 kHz in Live: enough for a bar at 40 BPM plus inserts.</li>
+    <li>The tape holds about 24 seconds in VCV and about 43 seconds at 48 kHz in Live: enough for a bar at 40 BPM, plus inserts in VCV.</li>
     <li>A big tempo change (more than 5%) jumps straight to one bar of the new tempo with a splice crossfade. Smaller drifts are followed with varispeed.</li>
     <li>SNAP's hit detector compares a fast and a slow envelope, so very soft or smeared material may give it nothing to snap to. Razor then cuts on the grid.</li>
     <li>The engines are the same design in both versions: <code>src/RazorEngine.hpp</code> (VCV) and <code>m4l/razor.genexpr</code> (gen~). Both pass the same 10 offline tests.</li>

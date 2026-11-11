@@ -1,7 +1,7 @@
 // Offline tests for the gen~ engine (m4l/razor.genexpr).
 // Translates the GenExpr into JavaScript (the code is written in a plain
 // style so this is a few text rules) and runs the same checks as
-// test/engine_test.cpp.
+// test/engine_test.cpp (except INSERT, which the Live version doesn't have).
 //   node m4l/test/gen_test.js
 "use strict";
 const { makeEngine } = require("./gen_translate");
@@ -101,24 +101,6 @@ for (let li = 0; li < 4; li++) {
   while (r.reversing) r.step();
   r.stepTo(r.n + 100);
   check(Math.abs(r.lag() - BAR) < 1.5, `CUT keeps the lag ${r.lag()}`);
-}
-
-// 5. INSERT then catch up
-{
-  const r = new Run({ insert: 1, catchrate: 0.12 });
-  r.stepTo(3 * BAR + 100);
-  r.press(1);
-  r.stepTo(r.n + P + 10);
-  check(r.reversing, "insert started");
-  const a = r.G.h_reva;
-  while (r.reversing) r.step();
-  check(Math.abs(r.G.h_f - a) < 3, `insert carries on from the start of the piece (${r.G.h_f} vs ${a})`);
-  check(r.lag() > BAR + P * 0.9, `lag grew ${r.lag()}`);
-  r.stepTo(r.n + 2000);
-  check(r.G.h_speed > 1.05, `running fast ${r.G.h_speed}`);
-  r.stepTo(r.n + Math.round(P / 0.12) + 2 * SR);
-  check(Math.abs(r.lag() - BAR) < 1, `caught up ${r.lag()}`);
-  check(Math.abs(r.G.h_speed - 1) < 1e-3, `normal speed ${r.G.h_speed}`);
 }
 
 // 6. BAR quantise, using the bar phase from Live

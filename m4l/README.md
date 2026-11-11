@@ -1,7 +1,8 @@
 # Razor for Max for Live
 
 The Razor reverse-tape splice as an Ableton Live **audio effect**. It does the same thing as the
-VCV module: the play head runs exactly **one bar behind** the record head, so the next ½, 1, 2
+VCV module (except INSERT mode, which the Live version leaves out: every splice goes back in
+place): the play head runs exactly **one bar behind** the record head, so the next ½, 1, 2
 or 4 beats are always already on the tape and can be cut out, played backwards and spliced
 back in place, landing back on the grid.
 
@@ -38,8 +39,8 @@ The four big buttons are ordinary Live parameters, so Live's own mapping works:
    **4** -> `4`.
 3. Press **Cmd/Ctrl+K** again to leave Key Map mode.
 
-**Cmd/Ctrl+M** does the same for MIDI (pads, a keyboard or a controller). SNAP, BAR, INSERT
-and Clear tape can be mapped the same way. The buttons can also be **automated** in the
+**Cmd/Ctrl+M** does the same for MIDI (pads, a keyboard or a controller). SNAP, BAR and Clear
+tape can be mapped the same way. The buttons can also be **automated** in the
 Arrangement, so you can write reverses into the song.
 
 ## Controls
@@ -51,9 +52,7 @@ Arrangement, so you can write reverses into the song.
 | **Angle** | The splice crossfade as a razor-block angle: 90° is a butt splice (0.2 ms), 45° the classic cut (about 17 ms), 22.5° about 40 ms. Real numbers for ¼" tape at 15 ips. |
 | **SNAP** | Puts each cut 2 ms before the nearest hit within ⅛ beat. Razor can do this because it's already holding the bar ahead. Cut then fine-tunes. |
 | **BAR** | Start on the next bar line, not the next beat. |
-| **INSERT** | Add the reversed piece in, not in place of the forward one. The tape then runs slightly fast until it's back to one bar late (a small pitch rise). **Insert catch-up** sets how fast: 2%, 6% or 12%. |
 | **Clear tape** | Silence everything on the tape (for example after a break). |
-| **REV** | Lights while a reversed piece plays. |
 
 The display shows the tape between the heads: the white **play head** on the left (what you
 hear), the red **record head** on the right (the bar you just played), beat and bar lines, a

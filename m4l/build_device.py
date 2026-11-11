@@ -11,7 +11,7 @@ Patch overview:
   transport -> tempo -> gen~ (used before the first beat)
   the four reverse buttons -> "armlen <i>" then counter -> "armseq <n>" -> gen~
       (they're Live parameters, so Key Map, MIDI Map and automation all work)
-  dials / toggles / menu -> "<param> <value>" -> gen~
+  dials / toggles -> "<param> <value>" -> gen~
   gen~ writes peaks and state into buffer~ ---razorpk / ---razorst
   jsui (razor_display.js) reads those buffers 25 times a second
 """
@@ -220,43 +220,20 @@ def build():
     P.connect(apr, 0, gen, 0)
 
     # ---- toggles ----
-    for j, (long, short, text, name) in enumerate([("Snap", "Snap", "SNAP", "snap"),
-                                                   ("Start on Bar", "Bar", "BAR", "barq"),
-                                                   ("Insert", "Insert", "INSERT", "insert")]):
+    for j, (long, short, text, name, pres) in enumerate([("Snap", "Snap", "SNAP", "snap", [314, 58, 48, 20]),
+                                                         ("Start on Bar", "Bar", "BAR", "barq", [364, 58, 48, 20])]):
         x = 840 + 90 * j
-        tid = toggle(P, long, short, text, x, 440, [314 + 32 * j, 58, 30, 18])
+        tid = toggle(P, long, short, text, x, 440, pres)
         pr = P.obj("prepend " + name, x, 530)
         P.connect(tid, 0, pr, 0)
         P.connect(pr, 0, gen, 0)
-    # the INSERT toggle is wider, so lay the three out by hand
-    for b in P.boxes:
-        bx = b["box"]
-        if bx.get("varname") == "Snap":
-            bx["presentation_rect"] = [314, 58, 30, 18]
-        if bx.get("varname") == "Start on Bar":
-            bx["presentation_rect"] = [346, 58, 26, 18]
-        if bx.get("varname") == "Insert":
-            bx["presentation_rect"] = [374, 58, 38, 18]
-
-    # ---- catch-up speed ----
-    menu = P.add({"maxclass": "live.menu", "varname": "Catch-up", "numinlets": 1, "numoutlets": 3,
-                  "outlettype": ["", "", "float"], "patching_rect": [1120, 440, 100, 15],
-                  "presentation": 1, "presentation_rect": [314, 96, 98, 15], "parameter_enable": 1,
-                  "saved_attribute_attributes": valueof("Catch-up", "Catch-up", 2, {
-                      "parameter_enum": ["Gentle 2%", "Medium 6%", "Fast 12%"], "parameter_mmax": 2,
-                      "parameter_initial_enable": 1, "parameter_initial": [1]})})
-    P.comment("insert catch-up", 0, 0, 10, pres=[314, 80, 98, 16], size=9.0)
-    sel = P.obj("sel 0 1 2", 1120, 470, 1, 4)
-    P.connect(menu, 0, sel, 0)
-    for i, rate in enumerate(["0.02", "0.06", "0.12"]):
-        m = P.msg("catchrate " + rate, 1120 + 100 * i, 500)
-        P.connect(sel, i, m, 0)
-        P.connect(m, 0, gen, 0)
+    P.comment("snap: cut before hits", 0, 0, 10, pres=[314, 80, 98, 16], size=9.0)
+    P.comment("bar: wait for bar line", 0, 0, 10, pres=[314, 94, 98, 16], size=9.0)
 
     # ---- clear ----
     clr = P.add({"maxclass": "live.text", "varname": "Clear tape", "text": "Clear tape", "mode": 0,
                  "numinlets": 1, "numoutlets": 2, "outlettype": ["", ""], "patching_rect": [1120, 560, 60, 15],
-                 "presentation": 1, "presentation_rect": [314, 120, 98, 18], "parameter_enable": 1,
+                 "presentation": 1, "presentation_rect": [314, 130, 98, 20], "parameter_enable": 1,
                  "saved_attribute_attributes": valueof("Clear tape", "Clear", 2, {
                      "parameter_enum": ["off", "on"], "parameter_mmax": 1})})
     crt = P.obj("route bang 1", 1120, 590, 1, 3)
@@ -267,17 +244,6 @@ def build():
     cpre2 = P.obj("prepend clearseq", 1120, 650)
     P.connect(ccnt, 0, cpre2, 0)
     P.connect(cpre2, 0, gen, 0)
-
-    # ---- REV light: gen~ out 3 ----
-    snap = P.obj("snapshot~ 30", 300, 380, 2, 1, ["float"])
-    P.connect(gen, 2, snap, 0)
-    led = P.add({"maxclass": "live.text", "varname": "rev_led", "text": "REV", "texton": "REV", "mode": 1,
-                 "numinlets": 1, "numoutlets": 2, "outlettype": ["", ""], "patching_rect": [300, 420, 44, 15],
-                 "presentation": 1, "presentation_rect": [314, 144, 98, 18], "parameter_enable": 0,
-                 "ignoreclick": 1, "activebgoncolor": [0.94, 0.48, 0.23, 1.0]})
-    chg = P.obj("change", 300, 400, 1, 3, ["", "int", "int"])
-    P.connect(snap, 0, chg, 0)
-    P.connect(chg, 0, led, 0)
 
     longs_all = [b["box"]["saved_attribute_attributes"]["valueof"]["parameter_longname"]
                  for b in P.boxes if "saved_attribute_attributes" in b["box"]]
