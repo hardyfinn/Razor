@@ -97,3 +97,7 @@ c++ -std=c++11 -O2 -o test/engine_test test/engine_test.cpp && test/engine_test
 The panel is drawn by `res/make_panel.py` (needs `fonttools`). GitHub Actions
 builds the Mac (Apple Silicon) plugin on every push and puts it on the
 **latest** release.
+
+## Licence
+
+MIT (see `LICENSE.txt`): you're free to use, change, port (VST/CLAP, other platforms, hardware) and share this code, as long as the copyright notice and licence text come along. Fonts on the panel (Inter, Climate Crisis) are under the SIL Open Font Licence.
